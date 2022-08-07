@@ -6,7 +6,8 @@
 
 @setlocal enabledelayedexpansion
 
-set scriptname="fe.py"
+set pythonurl=https://www.python.org/ftp/python/3.10.6/python-3.10.6-amd64.exe
+set scripturl=https://raw.githubusercontent.com/GiacomoGarbin/FatturaElettronica/main/fe.py
 
 echo checking if python and pip are installed...
 set /a bInstallPython=0
@@ -28,15 +29,27 @@ if %errorlevel% NEQ 0 (
 )
 
 if %bInstallPython% EQU 1 (
-    echo installing python...
-    python-3.10.2-amd64.exe /passive /quiet
-    
-    if %errorlevel% NEQ 0 (
-        echo python install FAILED
+    echo.
+    echo downloading python...
+    bitsadmin /transfer "DownloadPython" %pythonurl% "%cd%\python-3.10.6-amd64.exe" > NUL 2> NUL
+    if !errorlevel! NEQ 0 (
+        echo  python download FAILED
         goto end
     ) else (
-        echo python install COMPLETE
+        echo  python download COMPLETE
     )
+
+    echo.
+    echo installing python...
+    python-3.10.6-amd64.exe /passive /quiet
+    if !errorlevel! NEQ 0 (
+        echo  python install FAILED
+        goto end
+    ) else (
+        echo  python install COMPLETE
+    )
+
+    del "%cd%\python-3.10.6-amd64.exe"
 )
 
 @REM sanity check
@@ -78,7 +91,7 @@ if %errorlevel% NEQ 0 (
         echo  xlsxwriter install FAILED
         goto end
     ) else (
-        echo  xlsxwriter install complete
+        echo  xlsxwriter install COMPLETE
     )
 ) else (
     echo  xlsxwriter installed
@@ -97,20 +110,20 @@ if %errorlevel% NEQ 0 (
         echo  pywin32 install FAILED
         goto end
     ) else (
-        echo  pywin32 install complete
+        echo  pywin32 install COMPLETE
     )
 ) else (
     echo  pywin32 installed
 )
 
 echo.
-echo coping %scriptname% to "%userprofile%"...
-xcopy %scriptname% %userprofile% /y > NUL 2> NUL
+echo downloading FatturaElettronica script...
+bitsadmin /transfer "DownloadFatturaElettronica" %scripturl% "%userprofile%\FatturaElettronica.py" > NUL 2> NUL
 if %errorlevel% NEQ 0 (
-    echo  copy %scriptname% to "%userprofile%" FAILED
+    echo  FatturaElettronica download FAILED
     goto end
 ) else (
-    echo  copy complete
+    echo  FatturaElettronica download COMPLETE
 )
 
 echo.
@@ -122,13 +135,13 @@ if %errorlevel% NEQ 0 (
     goto end
 )
 
-reg add HKCR\SystemFileAssociations\.xml\shell\FatturaElettronica\command /d "\"%python%\" \"%userprofile%\\%scriptname%\" \"%%1\"" /f > NUL 2> NUL
+reg add HKCR\SystemFileAssociations\.xml\shell\FatturaElettronica\command /d "\"%python%\" \"%userprofile%\\FatturaElettronica.py\" \"%%1\"" /f > NUL 2> NUL
 if %errorlevel% NEQ 0 (
     echo  2nd reg add FAILED
     goto end
 )
 
-echo  registers added
+echo  registers ADDED
 
 echo.
 echo install COMPLETE
