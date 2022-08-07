@@ -5,6 +5,7 @@ import traceback
 import xml.etree.ElementTree as ET
 import xlsxwriter
 import win32api
+import os
 
 # column values
 
@@ -207,9 +208,9 @@ try:
     if len(sys.argv) < 2:
         raise GeneralError('no filename')
 
-    in_filename = sys.argv[1]
+    in_filename = win32api.GetLongPathName(sys.argv[1])
     root = None
-
+    
     try:
         tree = ET.parse(in_filename)
         root = tree.getroot()
@@ -219,11 +220,9 @@ try:
     if root.find('DatiBeniServizi'):
         raise GeneralError('no "DatiBeniServizi" elements in "%s"' % in_filename)
 
-    def IsXML(filename):
-        return filename.split('.')[-1].lower() == 'xml'
-    
-    out_filename = in_filename[:-4] if IsXML(in_filename) else in_filename
-    workbook = xlsxwriter.Workbook(out_filename + '.xlsx')
+    out_filename = os.path.splitext(in_filename)[0] + '.xlsx'
+
+    workbook = xlsxwriter.Workbook(out_filename)
 
     columns = [
         Descrizione(),
