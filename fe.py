@@ -6,6 +6,8 @@ import xml.etree.ElementTree as ET
 import xlsxwriter
 import win32api
 import os
+# import re
+import OpenSSL
 
 # column values
 
@@ -210,17 +212,76 @@ try:
 
     in_filename = win32api.GetLongPathName(sys.argv[1])
     root = None
+
+    # sanity check
+    if not in_filename.endswith('.xml') and not in_filename.endswith('.xml.p7m'):
+        raise GeneralError('file ext not supported, expected ".xml" or ".xml.p7m"')
+
+    isP7M = in_filename.endswith('.xml.p7m')
+
+    if isP7M:
+
+        try:
+            file = open(in_filename, 'rb').read()
+        except OSError:
+            raise GeneralError('failed to open "%s"' % in_filename)
+
+        p7 = OpenSSL.crypto.load_pkcs7_data(OpenSSL.crypto.FILETYPE_ASN1, file)
+        bio_out = OpenSSL.crypto._new_mem_buf()
+        result = OpenSSL._util.lib.PKCS7_verify(p7._pkcs7,
+                                                OpenSSL._util.ffi.NULL,
+                                                OpenSSL._util.ffi.NULL,
+                                                OpenSSL._util.ffi.NULL,
+                                                bio_out,
+                                                OpenSSL._util.lib.PKCS7_NOVERIFY)
+        if result == 1:
+            xmlbytes = OpenSSL.crypto._bio_to_string(bio_out)
+        else:
+            raise GeneralError('failed to decrypt "%s"' % in_filename)
+
+        try:
+            xmlstring = xmlbytes.decode('utf8')
+        except UnicodeDecodeError:
+            raise GeneralError('failed to decode "%s"' % in_filename)
+
+        try:
+            root = ET.fromstring(xmlstring)
+        except ET.ParseError:
+            raise GeneralError('failed to parse "%s"' % in_filename)
     
-    try:
-        tree = ET.parse(in_filename)
-        root = tree.getroot()
-    except ET.ParseError:
-        raise GeneralError('failed to parse "%s"' % in_filename)
+        # manually extract xml (utf8) from p7m
+
+        # begin = bytes('<ns3:FatturaElettronica', 'utf8')
+        # end = bytes('</ns3:FatturaElettronica>', 'utf8')
+        
+        # a = file.find(begin)
+        # b = file.find(end) + len(end)
+
+        # # check indices
+
+        # result = file[a:b].decode('utf8', 'ignore')
+        # result = file[a:b].decode('utf8')
+
+        # pattern = '(<ns3:FatturaElettronica .*>.*</ns3:FatturaElettronica>)'
+        # found = re.search(pattern, file, re.DOTALL)
+
+    else: # not isP7M
+        
+        try:
+            tree = ET.parse(in_filename)
+            root = tree.getroot()
+        except ET.ParseError:
+            raise GeneralError('failed to parse "%s"' % in_filename)
 
     if root.find('DatiBeniServizi'):
         raise GeneralError('no "DatiBeniServizi" elements in "%s"' % in_filename)
 
-    out_filename = os.path.splitext(in_filename)[0] + '.xlsx'
+    tmp_filename = os.path.splitext(in_filename)[0]
+
+    if isP7M:
+        tmp_filename = os.path.splitext(tmp_filename)[0]
+
+    out_filename = tmp_filename + '.xlsx'
 
     workbook = xlsxwriter.Workbook(out_filename)
 
