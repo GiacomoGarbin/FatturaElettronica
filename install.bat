@@ -117,6 +117,25 @@ if %errorlevel% NEQ 0 (
 )
 
 echo.
+echo checking if pyOpenSSL is installed...
+pip show pyOpenSSL > NUL 2> NUL
+if %errorlevel% NEQ 0 (
+    echo  pyOpenSSL NOT installed
+    echo  installing pyOpenSSL...
+    pip install pyOpenSSL > NUL 2> NUL
+
+    pip show pyOpenSSL > NUL 2> NUL
+    if !errorlevel! NEQ 0 (
+        echo  pyOpenSSL install FAILED
+        goto end
+    ) else (
+        echo  pyOpenSSL install COMPLETE
+    )
+) else (
+    echo  pyOpenSSL installed
+)
+
+echo.
 echo downloading FatturaElettronica script...
 bitsadmin /transfer "DownloadFatturaElettronica" %scripturl% "%userprofile%\FatturaElettronica.py" > NUL 2> NUL
 if %errorlevel% NEQ 0 (
@@ -138,6 +157,18 @@ if %errorlevel% NEQ 0 (
 reg add HKCR\SystemFileAssociations\.xml\shell\FatturaElettronica\command /d "\"%python%\" \"%userprofile%\\FatturaElettronica.py\" \"%%1\"" /f > NUL 2> NUL
 if %errorlevel% NEQ 0 (
     echo  2nd reg add FAILED
+    goto end
+)
+
+reg add HKCR\SystemFileAssociations\.p7m\shell\FatturaElettronica /d "Fattura Elettronica: xml -> xlsx" /f > NUL 2> NUL
+if %errorlevel% NEQ 0 (
+    echo  3rd reg add FAILED
+    goto end
+)
+
+reg add HKCR\SystemFileAssociations\.p7m\shell\FatturaElettronica\command /d "\"%python%\" \"%userprofile%\\FatturaElettronica.py\" \"%%1\"" /f > NUL 2> NUL
+if %errorlevel% NEQ 0 (
+    echo  4th reg add FAILED
     goto end
 )
 
